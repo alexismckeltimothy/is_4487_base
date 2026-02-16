@@ -1,0 +1,1569 @@
+{
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "bSMMBBjMUKCW"
+      },
+      "source": [
+        "> ### Note on Labs and Assignments:\n",
+        ">\n",
+        "> 🔧 Look for the **wrench emoji** 🔧 — it highlights where you're expected to take action!\n",
+        ">\n",
+        "> These sections are graded and are not optional.\n",
+        ">"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "wILWVHB_hdS9"
+      },
+      "source": [
+        "# IS 4487 Lab 6: Data Cleaning\n",
+        "\n",
+        "## Outline\n",
+        "\n",
+        "- Load and inspect a new dataset (Megatelco)\n",
+        "- Fix column names and data types\n",
+        "- Handle missing values\n",
+        "- Remove duplicate rows\n",
+        "- Review and remove outliers\n",
+        "- Reflect on data quality\n",
+        "\n",
+        "In this lab, we’ll clean the data to get it ready for transformations and analysis.\n",
+        "\n",
+        "We will continue working with this dataset in **Lab 7**, where we will create new features and apply transformations.\n",
+        "\n",
+        "<a href=\"https://colab.research.google.com/github/Stan-Pugsley/is_4487_base/blob/main/Labs/lab_06_data_cleaning.ipynb\" target=\"_parent\">\n",
+        "  <img src=\"https://colab.research.google.com/assets/colab-badge.svg\" alt=\"Open In Colab\"/>\n",
+        "</a>"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "7sL7v5VBhn0W"
+      },
+      "source": [
+        "## Megatelco Data Dictionary\n",
+        "\n",
+        " DEMOGRAPHIC VARIABLES:\n",
+        " - College - has the customer attended some college (one, zero)\n",
+        " - Income - annual income of customer\n",
+        " - House - estimated price of the customer's home (if applicable)\n",
+        "\n",
+        " USAGE VARIABLES:\n",
+        " - Data Overage Mb - Average number of megabytes that the customer used in excess of the plan limit (over last 12 months)\n",
+        " - Data Leftover Mb - Average number of megabytes that the customer use was below the plan limit (over last 12 months)\n",
+        " - Data Mb Used - Average number of megabytes used per month (over last 12 months)\n",
+        " - Text Message Count - Average number of texts per month (over last 12 months)\n",
+        " - Over 15 Minute Calls Per Month - Average number of calls over 15 minutes in duration per month (over last 12 months)\n",
+        " - Average Call Duration- Average call duration (over last 12 months)\n",
+        "\n",
+        "PHONE VARIABLES:\n",
+        " - Operating System - Current operating system of phone\n",
+        " - Handset Price - Retail price of the phone used by the customer\n",
+        "\n",
+        "ATTITUDINAL VARIABLES:\n",
+        " - Reported Satisfaction - Survey response to \"How satisfied are you with your current phone plan?\" (high, med, low)\n",
+        " - Reported Usage Level - Survey response to \"How much do you use your phone?\" (high, med, low)\n",
+        " - Considering Change of Plan - Survey response to \"Are you currently planning to change companies when your contract expires?\" (high, med, low)\n",
+        "\n",
+        "OTHER VARIABLES\n",
+        " - Leave - Did this customer churn with the last contract expiration? (LEAVE, STAY)\n",
+        " - ID - Customer identifier"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "j7lmvMVURvit",
+        "outputId": "0c5f0aaf-0664-469e-a2f2-5ba01c0dd22d",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 226
+        }
+      },
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "  college    income  data_overage_mb  data_leftover_mb  data_mb_used  \\\n",
+              "0     one  403137.0               70               0.0        6605.0   \n",
+              "1    zero  129700.0               67              16.0        6028.0   \n",
+              "2    zero   69741.0               60               0.0        1482.0   \n",
+              "3     one  377572.0                0              22.0        3005.0   \n",
+              "4    zero  382080.0                0               0.0        1794.0   \n",
+              "\n",
+              "   text_message_count   house  handset_price  over_15mins_calls_per_month  \\\n",
+              "0                 199  841317          653.0                          5.0   \n",
+              "1                 134  476664         1193.0                          5.0   \n",
+              "2                 176  810225         1037.0                          3.0   \n",
+              "3                 184  826967         1161.0                          0.0   \n",
+              "4                  74  951896         1023.0                          0.0   \n",
+              "\n",
+              "   average_call_duration reported_satisfaction reported_usage_level  \\\n",
+              "0                    8.0                   low                  low   \n",
+              "1                    5.0                   low                  low   \n",
+              "2                    8.0                   low                  low   \n",
+              "3                    5.0                   low                  low   \n",
+              "4                   14.0                   low                  low   \n",
+              "\n",
+              "  considering_change_of_plan  leave     id operating_system  \n",
+              "0                        yes  LEAVE   8183          Android  \n",
+              "1                        yes  LEAVE  12501              IOS  \n",
+              "2                        yes   STAY   7425              IOS  \n",
+              "3                         no  LEAVE  13488              IOS  \n",
+              "4                        yes   STAY  11389              IOS  "
+            ],
+            "text/html": [
+              "\n",
+              "  <div id=\"df-94548c50-284a-46e9-bf4f-fb72459cba9c\" class=\"colab-df-container\">\n",
+              "    <div>\n",
+              "<style scoped>\n",
+              "    .dataframe tbody tr th:only-of-type {\n",
+              "        vertical-align: middle;\n",
+              "    }\n",
+              "\n",
+              "    .dataframe tbody tr th {\n",
+              "        vertical-align: top;\n",
+              "    }\n",
+              "\n",
+              "    .dataframe thead th {\n",
+              "        text-align: right;\n",
+              "    }\n",
+              "</style>\n",
+              "<table border=\"1\" class=\"dataframe\">\n",
+              "  <thead>\n",
+              "    <tr style=\"text-align: right;\">\n",
+              "      <th></th>\n",
+              "      <th>college</th>\n",
+              "      <th>income</th>\n",
+              "      <th>data_overage_mb</th>\n",
+              "      <th>data_leftover_mb</th>\n",
+              "      <th>data_mb_used</th>\n",
+              "      <th>text_message_count</th>\n",
+              "      <th>house</th>\n",
+              "      <th>handset_price</th>\n",
+              "      <th>over_15mins_calls_per_month</th>\n",
+              "      <th>average_call_duration</th>\n",
+              "      <th>reported_satisfaction</th>\n",
+              "      <th>reported_usage_level</th>\n",
+              "      <th>considering_change_of_plan</th>\n",
+              "      <th>leave</th>\n",
+              "      <th>id</th>\n",
+              "      <th>operating_system</th>\n",
+              "    </tr>\n",
+              "  </thead>\n",
+              "  <tbody>\n",
+              "    <tr>\n",
+              "      <th>0</th>\n",
+              "      <td>one</td>\n",
+              "      <td>403137.0</td>\n",
+              "      <td>70</td>\n",
+              "      <td>0.0</td>\n",
+              "      <td>6605.0</td>\n",
+              "      <td>199</td>\n",
+              "      <td>841317</td>\n",
+              "      <td>653.0</td>\n",
+              "      <td>5.0</td>\n",
+              "      <td>8.0</td>\n",
+              "      <td>low</td>\n",
+              "      <td>low</td>\n",
+              "      <td>yes</td>\n",
+              "      <td>LEAVE</td>\n",
+              "      <td>8183</td>\n",
+              "      <td>Android</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>1</th>\n",
+              "      <td>zero</td>\n",
+              "      <td>129700.0</td>\n",
+              "      <td>67</td>\n",
+              "      <td>16.0</td>\n",
+              "      <td>6028.0</td>\n",
+              "      <td>134</td>\n",
+              "      <td>476664</td>\n",
+              "      <td>1193.0</td>\n",
+              "      <td>5.0</td>\n",
+              "      <td>5.0</td>\n",
+              "      <td>low</td>\n",
+              "      <td>low</td>\n",
+              "      <td>yes</td>\n",
+              "      <td>LEAVE</td>\n",
+              "      <td>12501</td>\n",
+              "      <td>IOS</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>2</th>\n",
+              "      <td>zero</td>\n",
+              "      <td>69741.0</td>\n",
+              "      <td>60</td>\n",
+              "      <td>0.0</td>\n",
+              "      <td>1482.0</td>\n",
+              "      <td>176</td>\n",
+              "      <td>810225</td>\n",
+              "      <td>1037.0</td>\n",
+              "      <td>3.0</td>\n",
+              "      <td>8.0</td>\n",
+              "      <td>low</td>\n",
+              "      <td>low</td>\n",
+              "      <td>yes</td>\n",
+              "      <td>STAY</td>\n",
+              "      <td>7425</td>\n",
+              "      <td>IOS</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>3</th>\n",
+              "      <td>one</td>\n",
+              "      <td>377572.0</td>\n",
+              "      <td>0</td>\n",
+              "      <td>22.0</td>\n",
+              "      <td>3005.0</td>\n",
+              "      <td>184</td>\n",
+              "      <td>826967</td>\n",
+              "      <td>1161.0</td>\n",
+              "      <td>0.0</td>\n",
+              "      <td>5.0</td>\n",
+              "      <td>low</td>\n",
+              "      <td>low</td>\n",
+              "      <td>no</td>\n",
+              "      <td>LEAVE</td>\n",
+              "      <td>13488</td>\n",
+              "      <td>IOS</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>4</th>\n",
+              "      <td>zero</td>\n",
+              "      <td>382080.0</td>\n",
+              "      <td>0</td>\n",
+              "      <td>0.0</td>\n",
+              "      <td>1794.0</td>\n",
+              "      <td>74</td>\n",
+              "      <td>951896</td>\n",
+              "      <td>1023.0</td>\n",
+              "      <td>0.0</td>\n",
+              "      <td>14.0</td>\n",
+              "      <td>low</td>\n",
+              "      <td>low</td>\n",
+              "      <td>yes</td>\n",
+              "      <td>STAY</td>\n",
+              "      <td>11389</td>\n",
+              "      <td>IOS</td>\n",
+              "    </tr>\n",
+              "  </tbody>\n",
+              "</table>\n",
+              "</div>\n",
+              "    <div class=\"colab-df-buttons\">\n",
+              "\n",
+              "  <div class=\"colab-df-container\">\n",
+              "    <button class=\"colab-df-convert\" onclick=\"convertToInteractive('df-94548c50-284a-46e9-bf4f-fb72459cba9c')\"\n",
+              "            title=\"Convert this dataframe to an interactive table.\"\n",
+              "            style=\"display:none;\">\n",
+              "\n",
+              "  <svg xmlns=\"http://www.w3.org/2000/svg\" height=\"24px\" viewBox=\"0 -960 960 960\">\n",
+              "    <path d=\"M120-120v-720h720v720H120Zm60-500h600v-160H180v160Zm220 220h160v-160H400v160Zm0 220h160v-160H400v160ZM180-400h160v-160H180v160Zm440 0h160v-160H620v160ZM180-180h160v-160H180v160Zm440 0h160v-160H620v160Z\"/>\n",
+              "  </svg>\n",
+              "    </button>\n",
+              "\n",
+              "  <style>\n",
+              "    .colab-df-container {\n",
+              "      display:flex;\n",
+              "      gap: 12px;\n",
+              "    }\n",
+              "\n",
+              "    .colab-df-convert {\n",
+              "      background-color: #E8F0FE;\n",
+              "      border: none;\n",
+              "      border-radius: 50%;\n",
+              "      cursor: pointer;\n",
+              "      display: none;\n",
+              "      fill: #1967D2;\n",
+              "      height: 32px;\n",
+              "      padding: 0 0 0 0;\n",
+              "      width: 32px;\n",
+              "    }\n",
+              "\n",
+              "    .colab-df-convert:hover {\n",
+              "      background-color: #E2EBFA;\n",
+              "      box-shadow: 0px 1px 2px rgba(60, 64, 67, 0.3), 0px 1px 3px 1px rgba(60, 64, 67, 0.15);\n",
+              "      fill: #174EA6;\n",
+              "    }\n",
+              "\n",
+              "    .colab-df-buttons div {\n",
+              "      margin-bottom: 4px;\n",
+              "    }\n",
+              "\n",
+              "    [theme=dark] .colab-df-convert {\n",
+              "      background-color: #3B4455;\n",
+              "      fill: #D2E3FC;\n",
+              "    }\n",
+              "\n",
+              "    [theme=dark] .colab-df-convert:hover {\n",
+              "      background-color: #434B5C;\n",
+              "      box-shadow: 0px 1px 3px 1px rgba(0, 0, 0, 0.15);\n",
+              "      filter: drop-shadow(0px 1px 2px rgba(0, 0, 0, 0.3));\n",
+              "      fill: #FFFFFF;\n",
+              "    }\n",
+              "  </style>\n",
+              "\n",
+              "    <script>\n",
+              "      const buttonEl =\n",
+              "        document.querySelector('#df-94548c50-284a-46e9-bf4f-fb72459cba9c button.colab-df-convert');\n",
+              "      buttonEl.style.display =\n",
+              "        google.colab.kernel.accessAllowed ? 'block' : 'none';\n",
+              "\n",
+              "      async function convertToInteractive(key) {\n",
+              "        const element = document.querySelector('#df-94548c50-284a-46e9-bf4f-fb72459cba9c');\n",
+              "        const dataTable =\n",
+              "          await google.colab.kernel.invokeFunction('convertToInteractive',\n",
+              "                                                    [key], {});\n",
+              "        if (!dataTable) return;\n",
+              "\n",
+              "        const docLinkHtml = 'Like what you see? Visit the ' +\n",
+              "          '<a target=\"_blank\" href=https://colab.research.google.com/notebooks/data_table.ipynb>data table notebook</a>'\n",
+              "          + ' to learn more about interactive tables.';\n",
+              "        element.innerHTML = '';\n",
+              "        dataTable['output_type'] = 'display_data';\n",
+              "        await google.colab.output.renderOutput(dataTable, element);\n",
+              "        const docLink = document.createElement('div');\n",
+              "        docLink.innerHTML = docLinkHtml;\n",
+              "        element.appendChild(docLink);\n",
+              "      }\n",
+              "    </script>\n",
+              "  </div>\n",
+              "\n",
+              "\n",
+              "    </div>\n",
+              "  </div>\n"
+            ],
+            "application/vnd.google.colaboratory.intrinsic+json": {
+              "type": "dataframe",
+              "variable_name": "df",
+              "summary": "{\n  \"name\": \"df\",\n  \"rows\": 15016,\n  \"fields\": [\n    {\n      \"column\": \"college\",\n      \"properties\": {\n        \"dtype\": \"category\",\n        \"num_unique_values\": 2,\n        \"samples\": [\n          \"zero\",\n          \"one\"\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    },\n    {\n      \"column\": \"income\",\n      \"properties\": {\n        \"dtype\": \"number\",\n        \"std\": 109627.85966562832,\n        \"min\": -65000.0,\n        \"max\": 432000.0,\n        \"num_unique_values\": 14715,\n        \"samples\": [\n          80973.0,\n          239000.0\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    },\n    {\n      \"column\": \"data_overage_mb\",\n      \"properties\": {\n        \"dtype\": \"number\",\n        \"std\": 113,\n        \"min\": 0,\n        \"max\": 380,\n        \"num_unique_values\": 381,\n        \"samples\": [\n          294,\n          163\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    },\n    {\n      \"column\": \"data_leftover_mb\",\n      \"properties\": {\n        \"dtype\": \"number\",\n        \"std\": 28.0523177836588,\n        \"min\": 0.0,\n        \"max\": 89.0,\n        \"num_unique_values\": 90,\n        \"samples\": [\n          80.0,\n          46.0\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    },\n    {\n      \"column\": \"data_mb_used\",\n      \"properties\": {\n        \"dtype\": \"number\",\n        \"std\": 2203.8024463604534,\n        \"min\": 400.0,\n        \"max\": 8000.0,\n        \"num_unique_values\": 6500,\n        \"samples\": [\n          5499.0,\n          4288.0\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    },\n    {\n      \"column\": \"text_message_count\",\n      \"properties\": {\n        \"dtype\": \"number\",\n        \"std\": 62,\n        \"min\": 52,\n        \"max\": 5000,\n        \"num_unique_values\": 170,\n        \"samples\": [\n          166,\n          144\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    },\n    {\n      \"column\": \"house\",\n      \"properties\": {\n        \"dtype\": \"number\",\n        \"std\": 287016,\n        \"min\": -463,\n        \"max\": 1456389,\n        \"num_unique_values\": 14885,\n        \"samples\": [\n          1164856,\n          1452898\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    },\n    {\n      \"column\": \"handset_price\",\n      \"properties\": {\n        \"dtype\": \"number\",\n        \"std\": 1238.997926701688,\n        \"min\": -200.0,\n        \"max\": 125000.0,\n        \"num_unique_values\": 1140,\n        \"samples\": [\n          822.0,\n          609.0\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    },\n    {\n      \"column\": \"over_15mins_calls_per_month\",\n      \"properties\": {\n        \"dtype\": \"number\",\n        \"std\": 8.404210262403263,\n        \"min\": 0.0,\n        \"max\": 35.0,\n        \"num_unique_values\": 36,\n        \"samples\": [\n          30.0,\n          22.0\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    },\n    {\n      \"column\": \"average_call_duration\",\n      \"properties\": {\n        \"dtype\": \"number\",\n        \"std\": 41.18895699052666,\n        \"min\": 1.0,\n        \"max\": 5000.0,\n        \"num_unique_values\": 20,\n        \"samples\": [\n          8.0,\n          3.0\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    },\n    {\n      \"column\": \"reported_satisfaction\",\n      \"properties\": {\n        \"dtype\": \"category\",\n        \"num_unique_values\": 3,\n        \"samples\": [\n          \"low\",\n          \"high\"\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    },\n    {\n      \"column\": \"reported_usage_level\",\n      \"properties\": {\n        \"dtype\": \"category\",\n        \"num_unique_values\": 3,\n        \"samples\": [\n          \"low\",\n          \"high\"\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    },\n    {\n      \"column\": \"considering_change_of_plan\",\n      \"properties\": {\n        \"dtype\": \"category\",\n        \"num_unique_values\": 2,\n        \"samples\": [\n          \"no\",\n          \"yes\"\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    },\n    {\n      \"column\": \"leave\",\n      \"properties\": {\n        \"dtype\": \"category\",\n        \"num_unique_values\": 2,\n        \"samples\": [\n          \"STAY\",\n          \"LEAVE\"\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    },\n    {\n      \"column\": \"id\",\n      \"properties\": {\n        \"dtype\": \"number\",\n        \"std\": 6812,\n        \"min\": 2,\n        \"max\": 25354,\n        \"num_unique_values\": 11560,\n        \"samples\": [\n          18399,\n          10017\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    },\n    {\n      \"column\": \"operating_system\",\n      \"properties\": {\n        \"dtype\": \"category\",\n        \"num_unique_values\": 2,\n        \"samples\": [\n          \"IOS\",\n          \"Android\"\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    }\n  ]\n}"
+            }
+          },
+          "metadata": {},
+          "execution_count": 1
+        }
+      ],
+      "source": [
+        "import pandas as pd\n",
+        "\n",
+        "url = \"https://raw.githubusercontent.com/Stan-Pugsley/is_4487_base/812e9f15c357a5657a2795631fcaa9d9363cb417/DataSets/megatelco_leave_survey_data_cleaning_v2.csv\"\n",
+        "df = pd.read_csv(url)\n",
+        "\n",
+        "df.head()"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "6p640aQi2Tw-"
+      },
+      "outputs": [],
+      "source": [
+        "# create a copy of your dataset for use in part 4\n",
+        "copied_df = df.copy(deep=True)"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "x5EdJF_oiJDb"
+      },
+      "source": [
+        "## Part 1: Review Column Names and Structure\n",
+        "\n",
+        "Before cleaning, check the structure of the dataset:\n",
+        "\n",
+        "- Are column names consistent (lowercase, no spaces)?\n",
+        "- Are there any typos or redundant labels?\n",
+        "- Do the rows and columns appear aligned? (Are all the columns the same size? Are all the rows the same size?)\n",
+        "\n",
+        "Why this matters:\n",
+        "Inconsistent or messy column names can break code and make analysis harder to follow.\n",
+        "\n",
+        "\n"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "nm4Pnq-ViH38",
+        "outputId": "4853aa88-8985-4d73-aff1-c025a6f3d44a",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        }
+      },
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "<class 'pandas.core.frame.DataFrame'>\n",
+            "RangeIndex: 15016 entries, 0 to 15015\n",
+            "Data columns (total 16 columns):\n",
+            " #   Column                       Non-Null Count  Dtype  \n",
+            "---  ------                       --------------  -----  \n",
+            " 0   college                      15016 non-null  object \n",
+            " 1   income                       15006 non-null  float64\n",
+            " 2   data_overage_mb              15016 non-null  int64  \n",
+            " 3   data_leftover_mb             14916 non-null  float64\n",
+            " 4   data_mb_used                 14916 non-null  float64\n",
+            " 5   text_message_count           15016 non-null  int64  \n",
+            " 6   house                        15016 non-null  int64  \n",
+            " 7   handset_price                14916 non-null  float64\n",
+            " 8   over_15mins_calls_per_month  15013 non-null  float64\n",
+            " 9   average_call_duration        14916 non-null  float64\n",
+            " 10  reported_satisfaction        15016 non-null  object \n",
+            " 11  reported_usage_level         15016 non-null  object \n",
+            " 12  considering_change_of_plan   14201 non-null  object \n",
+            " 13  leave                        15016 non-null  object \n",
+            " 14  id                           15016 non-null  int64  \n",
+            " 15  operating_system             15016 non-null  object \n",
+            "dtypes: float64(6), int64(4), object(6)\n",
+            "memory usage: 1.8+ MB\n"
+          ]
+        }
+      ],
+      "source": [
+        "# Standardize column names: lowercase, no spaces\n",
+        "df.columns = df.columns.str.strip().str.lower().str.replace(\" \", \"_\")\n",
+        "\n",
+        "# Get column info and data types\n",
+        "df.info()"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "rRc0L4FGiYOz"
+      },
+      "source": [
+        "## Part 2: Convert Data Types\n",
+        "\n",
+        "Before analysis, make sure each column is stored in the correct format. This helps avoid calculation errors, makes plotting smoother, and ensures models interpret the data correctly.\n",
+        "\n",
+        "Think about:\n",
+        "- Are numbers accidentally stored as strings?\n",
+        "- Should repeated text values be converted to categories?\n",
+        "- Are \"yes\"/\"no\" columns better represented as binary (0/1) or categorical types?\n",
+        "\n",
+        "Fixing data types now saves time and avoids issues later in your workflow.\n",
+        "\n",
+        "\n"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "9R4guI7lfgGi",
+        "outputId": "36fcc07b-2af0-43fe-d692-e90292ca65e4",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        }
+      },
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Original dtypes:\n",
+            " college                         object\n",
+            "income                         float64\n",
+            "data_overage_mb                  int64\n",
+            "data_leftover_mb               float64\n",
+            "data_mb_used                   float64\n",
+            "text_message_count               int64\n",
+            "house                            int64\n",
+            "handset_price                  float64\n",
+            "over_15mins_calls_per_month    float64\n",
+            "average_call_duration          float64\n",
+            "reported_satisfaction           object\n",
+            "reported_usage_level            object\n",
+            "considering_change_of_plan      object\n",
+            "leave                           object\n",
+            "id                               int64\n",
+            "operating_system                object\n",
+            "dtype: object\n",
+            "\n",
+            "Updated dtypes:\n",
+            " college                        category\n",
+            "income                          float64\n",
+            "data_overage_mb                   int64\n",
+            "data_leftover_mb                float64\n",
+            "data_mb_used                    float64\n",
+            "text_message_count                int64\n",
+            "house                             int64\n",
+            "handset_price                   float64\n",
+            "over_15mins_calls_per_month     float64\n",
+            "average_call_duration           float64\n",
+            "reported_satisfaction          category\n",
+            "reported_usage_level           category\n",
+            "considering_change_of_plan     category\n",
+            "leave                            object\n",
+            "id                                int64\n",
+            "operating_system               category\n",
+            "dtype: object\n"
+          ]
+        }
+      ],
+      "source": [
+        "# Check original data types\n",
+        "print(\"Original dtypes:\\n\", df.dtypes)\n",
+        "\n",
+        "# Convert object to nominal categorical\n",
+        "obj_to_nomcat_cols = ['considering_change_of_plan', 'college', 'operating_system']\n",
+        "for acol in obj_to_nomcat_cols:\n",
+        "    df[acol] = df[acol].astype('category')\n",
+        "\n",
+        "# Convert ordered categorical columns\n",
+        "df['reported_satisfaction'] = pd.Categorical(df['reported_satisfaction'], categories=['low', 'avg', 'high'], ordered=True)\n",
+        "df['reported_usage_level'] = pd.Categorical(df['reported_usage_level'], categories=['low', 'avg', 'high'], ordered=True)\n",
+        "\n",
+        "# Check updated data types\n",
+        "print(\"\\nUpdated dtypes:\\n\", df.dtypes)\n"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "C8diAR0Vil7a"
+      },
+      "source": [
+        "### 🔧 Try It Yourself – Part 2\n",
+        "\n",
+        "1. Convert the `leave` column from \"yes\"/\"no\" to binary (`1`/`0`) and make it a **category**\n",
+        "2. Convert `reported_usage_level` to a **categorical** type\n",
+        "3. Convert `house` to an **integer** type\n",
+        "3. Use `.info()` to confirm the changes\n"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "TxDe-Td1ilji",
+        "outputId": "969f9cda-659b-4794-b125-14d543d8f445",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        }
+      },
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "<class 'pandas.core.frame.DataFrame'>\n",
+            "Index: 14986 entries, 0 to 15015\n",
+            "Data columns (total 16 columns):\n",
+            " #   Column                       Non-Null Count  Dtype   \n",
+            "---  ------                       --------------  -----   \n",
+            " 0   college                      14986 non-null  category\n",
+            " 1   income                       14986 non-null  float64 \n",
+            " 2   data_overage_mb              14986 non-null  int64   \n",
+            " 3   data_leftover_mb             14986 non-null  float64 \n",
+            " 4   data_mb_used                 14986 non-null  float64 \n",
+            " 5   text_message_count           14986 non-null  int64   \n",
+            " 6   house                        14986 non-null  int64   \n",
+            " 7   handset_price                14986 non-null  float64 \n",
+            " 8   over_15mins_calls_per_month  14983 non-null  float64 \n",
+            " 9   average_call_duration        14986 non-null  float64 \n",
+            " 10  reported_satisfaction        14986 non-null  category\n",
+            " 11  reported_usage_level         14986 non-null  category\n",
+            " 12  considering_change_of_plan   14175 non-null  category\n",
+            " 13  leave                        14986 non-null  category\n",
+            " 14  id                           14986 non-null  int64   \n",
+            " 15  operating_system             14986 non-null  category\n",
+            "dtypes: category(6), float64(6), int64(4)\n",
+            "memory usage: 1.3 MB\n"
+          ]
+        }
+      ],
+      "source": [
+        "# Convert leave from STAY/LEAVE to binary 1/0 and make it a category\n",
+        "df['leave'] = df['leave'].map({'STAY': 0, 'LEAVE': 1}).astype('category')\n",
+        "\n",
+        "# Convert house to integer type\n",
+        "df['house'] = df['house'].astype(int)\n",
+        "\n",
+        "# Confirm changes\n",
+        "df.info()\n"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "V89jBNxwiqLR"
+      },
+      "source": [
+        "## Part 3: Handle Missing Values\n",
+        "\n",
+        "Missing data can break charts, skew stats, and disrupt models — so it needs to be handled carefully.\n",
+        "\n",
+        "### Think about:\n",
+        "- Are the missing values random or patterned?\n",
+        "- Can we drop rows, or do we need to fill them?\n",
+        "- Should we use mean, median, or something else?\n",
+        "\n",
+        "### Guidelines:\n",
+        "- Drop rows if there are only a few missing and the columns associated with them are essential to keep intact\n",
+        "- Use median to replace outliers in numeric columns\n",
+        "- Use 0 if the missing value means “none” (e.g. If the value was in response to: “do you have a history of chronic illness?” and the value was just left blank, we can assume that that blank just means “none” (the patient has no history of chronic illness))\n",
+        "- Use mode to replace categorical values\n",
+        "\n",
+        "Cleaning missing values early avoids bigger problems later.\n",
+        "\n",
+        "-----\n",
+        "\n",
+        "\n",
+        "**Note on `.loc` and Warnings** - When assigning values to a DataFrame, especially after filtering or copying, it's best to use `.loc` to avoid **`SettingWithCopyWarning`**. This ensures that you're updating the original data and not a temporary view of it.\n"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "_5CvIibPiwkZ",
+        "outputId": "bbd9d2bf-0395-4ce0-8c92-786b80661fb7",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        }
+      },
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Missing values per column:\n",
+            " college                          0\n",
+            "income                           0\n",
+            "data_overage_mb                  0\n",
+            "data_leftover_mb                 0\n",
+            "data_mb_used                     0\n",
+            "text_message_count               0\n",
+            "house                            0\n",
+            "handset_price                    0\n",
+            "over_15mins_calls_per_month      3\n",
+            "average_call_duration            0\n",
+            "reported_satisfaction            0\n",
+            "reported_usage_level             0\n",
+            "considering_change_of_plan     811\n",
+            "leave                            0\n",
+            "id                               0\n",
+            "operating_system                 0\n",
+            "dtype: int64\n",
+            "\n",
+            "Missing values after handling:\n",
+            " college                        0\n",
+            "income                         0\n",
+            "data_overage_mb                0\n",
+            "data_leftover_mb               0\n",
+            "data_mb_used                   0\n",
+            "text_message_count             0\n",
+            "house                          0\n",
+            "handset_price                  0\n",
+            "over_15mins_calls_per_month    0\n",
+            "average_call_duration          0\n",
+            "reported_satisfaction          0\n",
+            "reported_usage_level           0\n",
+            "considering_change_of_plan     0\n",
+            "leave                          0\n",
+            "id                             0\n",
+            "operating_system               0\n",
+            "dtype: int64\n"
+          ]
+        }
+      ],
+      "source": [
+        "# View missing value counts\n",
+        "print(\"Missing values per column:\\n\", df.isnull().sum())\n",
+        "\n",
+        "# Fill 'handset_price' with median\n",
+        "df['handset_price'] = df['handset_price'].fillna(df['handset_price'].median())\n",
+        "\n",
+        "# Drop rows with missing 'income'\n",
+        "df = df.dropna(subset=['income']).copy()\n",
+        "\n",
+        "# Fill missing numeric columns\n",
+        "df.loc[:, 'data_leftover_mb'] = df['data_leftover_mb'].fillna(0)\n",
+        "df.loc[:, 'average_call_duration'] = df['average_call_duration'].fillna(df['average_call_duration'].median())\n",
+        "df.loc[:, 'data_mb_used'] = df['data_mb_used'].fillna(df['data_mb_used'].median())\n",
+        "df.loc[:, 'over_15mins_calls_per_month'] = df['over_15mins_calls_per_month'].fillna(\n",
+        "    df['over_15mins_calls_per_month'].median()\n",
+        ")\n",
+        "\n",
+        "# Fill missing categorical column with mode\n",
+        "df.loc[:, 'considering_change_of_plan'] = df['considering_change_of_plan'].fillna(\n",
+        "    df['considering_change_of_plan'].mode()[0]\n",
+        ")\n",
+        "\n",
+        "# Confirm updated missing values\n",
+        "print(\"\\nMissing values after handling:\\n\", df.isnull().sum())\n"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "uYVOlmerk5_2"
+      },
+      "source": [
+        "### 🔧 Try It Yourself – Part 3\n",
+        "\n",
+        "\n",
+        "There are still some missing values in:\n",
+        "\n",
+        "- `over_15mins_calls_per_month`\n",
+        "- `considering_change_of_plan`\n",
+        "\n",
+        "Decide how to handle them based on what makes the most sense:\n",
+        "\n",
+        "- Should you fill them with 0, the median, or something else?\n",
+        "- For categories, would a placeholder like \"unknown\" or the most common value work?\n",
+        "- Or is it better to drop those rows?\n",
+        "\n",
+        "1. Write and execute code to handle the missing values in the remaining two columns.\n",
+        "2. Use `df.isnull().sum()` to confirm all missing values are handled.\n",
+        "\n"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "yTFPZdink5Ua",
+        "outputId": "3cf727d6-44d6-4136-cc64-74b2009d9048",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        }
+      },
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "college                        0\n",
+            "income                         0\n",
+            "data_overage_mb                0\n",
+            "data_leftover_mb               0\n",
+            "data_mb_used                   0\n",
+            "text_message_count             0\n",
+            "house                          0\n",
+            "handset_price                  0\n",
+            "over_15mins_calls_per_month    0\n",
+            "average_call_duration          0\n",
+            "reported_satisfaction          0\n",
+            "reported_usage_level           0\n",
+            "considering_change_of_plan     0\n",
+            "leave                          0\n",
+            "id                             0\n",
+            "operating_system               0\n",
+            "dtype: int64\n"
+          ]
+        }
+      ],
+      "source": [
+        "# Confirm no remaining missing values\n",
+        "print(df.isnull().sum())\n"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "wGSRC2UsTipt"
+      },
+      "source": [
+        "## Part 4: Remove Duplicate Rows\n",
+        "\n",
+        "Sometimes the same row appears more than once due to data entry or processing mistakes. It's important to check for and remove these duplicates.\n",
+        "\n",
+        "Think about:\n",
+        "- Are there rows that are exactly the same?\n",
+        "- If duplicates exist, should you keep the first one, the last one, or none?\n",
+        "\n",
+        "Why this matters:\n",
+        "Duplicate rows can inflate totals, distort statistics, and lead to inaccurate conclusions.\n"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "1TOElN0LTmZD",
+        "outputId": "af588000-a2e7-4b0d-e17a-5d16746fb48b",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        }
+      },
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Number of duplicate rows: 0\n",
+            "Remaining rows after removing duplicates: 14986\n"
+          ]
+        }
+      ],
+      "source": [
+        "# Check for exact duplicates\n",
+        "print(f\"Number of duplicate rows: {df.duplicated().sum()}\")\n",
+        "\n",
+        "# Remove them, keeping the first occurrence\n",
+        "df = df.drop_duplicates()\n",
+        "\n",
+        "# Confirm result\n",
+        "print(f\"Remaining rows after removing duplicates: {len(df)}\")"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "iL3PCXy2Tl4z"
+      },
+      "source": [
+        "### 🔧 Try It Yourself – Part 4\n",
+        "\n",
+        "1. Use `copied_df.duplicated().sum()` to count how many duplicates are in your dataset.\n",
+        "2. Try using `copied_df.drop_duplicates(keep='last')` instead — what changes?\n",
+        "\n",
+        "### In Your Response:\n",
+        "1. Explore whether duplicate rows share the same ID or just values across all columns and comment on your observation.\n"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "UyFVNN7fTtWq",
+        "outputId": "062f1546-b068-460f-931f-36197767a0bb",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        }
+      },
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Duplicate rows in copied_df: 17\n",
+            "Rows after keeping last: 14999\n",
+            "Rows after keeping first: 14999\n"
+          ]
+        }
+      ],
+      "source": [
+        "# Count duplicates in copied_df\n",
+        "print(\"Duplicate rows in copied_df:\", copied_df.duplicated().sum())\n",
+        "\n",
+        "# Remove duplicates keeping the last occurrence\n",
+        "copied_df_last = copied_df.drop_duplicates(keep='last')\n",
+        "\n",
+        "print(\"Rows after keeping last:\", len(copied_df_last))\n",
+        "print(\"Rows after keeping first:\", len(copied_df.drop_duplicates()))\n"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "-CJNfob8qeGi"
+      },
+      "source": [
+        "### ✍️ Your Response: 🔧\n",
+        "1. I found 17 duplicate rows. When I kept the first vs the last duplicate, nothing changed (both ended with 14,999 rows). That tells me the duplicates are exact copies of the same row, not rows with the same ID but different info."
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "IrGThmZxTsdG"
+      },
+      "source": [
+        "## Part 5: Identify and Remove Obvious Outliers\n",
+        "\n",
+        "Outliers are values that fall far outside the normal range. They can come from data entry mistakes or rare cases.\n",
+        "\n",
+        "- Use summary statistics or visual tools (like boxplots) to find them.\n",
+        "- Look for clearly unrealistic values — e.g., negative prices or extremely high data usage.\n",
+        "- Decide how to handle them:\n",
+        "  - Remove if they’re errors.\n",
+        "  - Keep if they’re valid but rare — or cap them if needed.\n",
+        "\n",
+        "Outliers can distort averages, stretch visualizations, and mislead models, so it’s important to address them carefully.\n",
+        "\n"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "yQkgPvH-TyV-",
+        "outputId": "2c0af425-fd31-41c8-a2e8-3007cc68cb62",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        }
+      },
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Shape after removing obvious outliers: (14986, 16)\n"
+          ]
+        }
+      ],
+      "source": [
+        "# Review summary statistics to identify potential outliers\n",
+        "df.describe()\n",
+        "\n",
+        "# Remove negative or nonsensical values using business rules\n",
+        "df = df[df['handset_price'] >= 0]\n",
+        "df = df[df['average_call_duration'] < 1000]\n",
+        "df = df[df['text_message_count'] < 1000]\n",
+        "\n",
+        "print(\"Shape after removing obvious outliers:\", df.shape)\n",
+        "\n"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "hs44Te_xT1x0"
+      },
+      "source": [
+        "### 🔧 Try It Yourself – Part 5\n",
+        "\n",
+        "1. Use `df.describe()` to look for columns with extreme minimum or maximum values.\n",
+        "2. Set a threshold for what you think is \"too high\" or \"too low\" for:\n",
+        "  - `data_mb_used`\n",
+        "  - `over_15mins_calls_per_month`\n",
+        "  - `income`\n",
+        "3. Remove those outliers using boolean filtering like `df = df[df['column'] < threshold]`"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "GZht29q2U_qz",
+        "outputId": "5465e60f-3d94-4898-f576-3dd80a04444c",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        }
+      },
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "(14986, 16)\n"
+          ]
+        }
+      ],
+      "source": [
+        "df.describe()\n",
+        "\n",
+        "df = df[df['data_mb_used'] <= 8000]\n",
+        "df = df[df['over_15mins_calls_per_month'] <= 35]\n",
+        "df = df[df['income'] >= 0]\n",
+        "\n",
+        "print(df.shape)\n"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "SDo8Cbb5T5ve"
+      },
+      "source": [
+        "## Part 6: Handle Outliers Using Quantiles\n",
+        "\n",
+        "Instead of removing outliers, we can limit their impact by capping extreme values — a method known as **Winsorizing**.\n",
+        "\n",
+        "### How to Do It:\n",
+        "- Use `.quantile()` to identify the 1st and 99th percentiles (or other thresholds).\n",
+        "- Use `.clip()` to cap values within that range.\n",
+        "\n",
+        "This keeps your dataset intact while reducing the influence of extreme values on your analysis or model.\n",
+        "\n"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "5MsTpfh1T-MA",
+        "outputId": "a05f5c9e-906d-4b1e-a0e5-0286e934da11",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 300
+        }
+      },
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "              income  data_mb_used  average_call_duration\n",
+              "count   14986.000000  14986.000000           14986.000000\n",
+              "mean   241988.485003   4201.270211               9.731149\n",
+              "std    109520.678026   2195.553686               5.178082\n",
+              "min     55704.932500    471.000000               1.000000\n",
+              "25%    147808.250000   2304.000000               5.000000\n",
+              "50%    241653.000000   4221.000000              10.000000\n",
+              "75%    336442.000000   6063.000000              14.000000\n",
+              "max    427991.742500   7929.022500              19.000000"
+            ],
+            "text/html": [
+              "\n",
+              "  <div id=\"df-8e5d1ce2-e9bf-4602-8031-8fcd5d290dba\" class=\"colab-df-container\">\n",
+              "    <div>\n",
+              "<style scoped>\n",
+              "    .dataframe tbody tr th:only-of-type {\n",
+              "        vertical-align: middle;\n",
+              "    }\n",
+              "\n",
+              "    .dataframe tbody tr th {\n",
+              "        vertical-align: top;\n",
+              "    }\n",
+              "\n",
+              "    .dataframe thead th {\n",
+              "        text-align: right;\n",
+              "    }\n",
+              "</style>\n",
+              "<table border=\"1\" class=\"dataframe\">\n",
+              "  <thead>\n",
+              "    <tr style=\"text-align: right;\">\n",
+              "      <th></th>\n",
+              "      <th>income</th>\n",
+              "      <th>data_mb_used</th>\n",
+              "      <th>average_call_duration</th>\n",
+              "    </tr>\n",
+              "  </thead>\n",
+              "  <tbody>\n",
+              "    <tr>\n",
+              "      <th>count</th>\n",
+              "      <td>14986.000000</td>\n",
+              "      <td>14986.000000</td>\n",
+              "      <td>14986.000000</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>mean</th>\n",
+              "      <td>241988.485003</td>\n",
+              "      <td>4201.270211</td>\n",
+              "      <td>9.731149</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>std</th>\n",
+              "      <td>109520.678026</td>\n",
+              "      <td>2195.553686</td>\n",
+              "      <td>5.178082</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>min</th>\n",
+              "      <td>55704.932500</td>\n",
+              "      <td>471.000000</td>\n",
+              "      <td>1.000000</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>25%</th>\n",
+              "      <td>147808.250000</td>\n",
+              "      <td>2304.000000</td>\n",
+              "      <td>5.000000</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>50%</th>\n",
+              "      <td>241653.000000</td>\n",
+              "      <td>4221.000000</td>\n",
+              "      <td>10.000000</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>75%</th>\n",
+              "      <td>336442.000000</td>\n",
+              "      <td>6063.000000</td>\n",
+              "      <td>14.000000</td>\n",
+              "    </tr>\n",
+              "    <tr>\n",
+              "      <th>max</th>\n",
+              "      <td>427991.742500</td>\n",
+              "      <td>7929.022500</td>\n",
+              "      <td>19.000000</td>\n",
+              "    </tr>\n",
+              "  </tbody>\n",
+              "</table>\n",
+              "</div>\n",
+              "    <div class=\"colab-df-buttons\">\n",
+              "\n",
+              "  <div class=\"colab-df-container\">\n",
+              "    <button class=\"colab-df-convert\" onclick=\"convertToInteractive('df-8e5d1ce2-e9bf-4602-8031-8fcd5d290dba')\"\n",
+              "            title=\"Convert this dataframe to an interactive table.\"\n",
+              "            style=\"display:none;\">\n",
+              "\n",
+              "  <svg xmlns=\"http://www.w3.org/2000/svg\" height=\"24px\" viewBox=\"0 -960 960 960\">\n",
+              "    <path d=\"M120-120v-720h720v720H120Zm60-500h600v-160H180v160Zm220 220h160v-160H400v160Zm0 220h160v-160H400v160ZM180-400h160v-160H180v160Zm440 0h160v-160H620v160ZM180-180h160v-160H180v160Zm440 0h160v-160H620v160Z\"/>\n",
+              "  </svg>\n",
+              "    </button>\n",
+              "\n",
+              "  <style>\n",
+              "    .colab-df-container {\n",
+              "      display:flex;\n",
+              "      gap: 12px;\n",
+              "    }\n",
+              "\n",
+              "    .colab-df-convert {\n",
+              "      background-color: #E8F0FE;\n",
+              "      border: none;\n",
+              "      border-radius: 50%;\n",
+              "      cursor: pointer;\n",
+              "      display: none;\n",
+              "      fill: #1967D2;\n",
+              "      height: 32px;\n",
+              "      padding: 0 0 0 0;\n",
+              "      width: 32px;\n",
+              "    }\n",
+              "\n",
+              "    .colab-df-convert:hover {\n",
+              "      background-color: #E2EBFA;\n",
+              "      box-shadow: 0px 1px 2px rgba(60, 64, 67, 0.3), 0px 1px 3px 1px rgba(60, 64, 67, 0.15);\n",
+              "      fill: #174EA6;\n",
+              "    }\n",
+              "\n",
+              "    .colab-df-buttons div {\n",
+              "      margin-bottom: 4px;\n",
+              "    }\n",
+              "\n",
+              "    [theme=dark] .colab-df-convert {\n",
+              "      background-color: #3B4455;\n",
+              "      fill: #D2E3FC;\n",
+              "    }\n",
+              "\n",
+              "    [theme=dark] .colab-df-convert:hover {\n",
+              "      background-color: #434B5C;\n",
+              "      box-shadow: 0px 1px 3px 1px rgba(0, 0, 0, 0.15);\n",
+              "      filter: drop-shadow(0px 1px 2px rgba(0, 0, 0, 0.3));\n",
+              "      fill: #FFFFFF;\n",
+              "    }\n",
+              "  </style>\n",
+              "\n",
+              "    <script>\n",
+              "      const buttonEl =\n",
+              "        document.querySelector('#df-8e5d1ce2-e9bf-4602-8031-8fcd5d290dba button.colab-df-convert');\n",
+              "      buttonEl.style.display =\n",
+              "        google.colab.kernel.accessAllowed ? 'block' : 'none';\n",
+              "\n",
+              "      async function convertToInteractive(key) {\n",
+              "        const element = document.querySelector('#df-8e5d1ce2-e9bf-4602-8031-8fcd5d290dba');\n",
+              "        const dataTable =\n",
+              "          await google.colab.kernel.invokeFunction('convertToInteractive',\n",
+              "                                                    [key], {});\n",
+              "        if (!dataTable) return;\n",
+              "\n",
+              "        const docLinkHtml = 'Like what you see? Visit the ' +\n",
+              "          '<a target=\"_blank\" href=https://colab.research.google.com/notebooks/data_table.ipynb>data table notebook</a>'\n",
+              "          + ' to learn more about interactive tables.';\n",
+              "        element.innerHTML = '';\n",
+              "        dataTable['output_type'] = 'display_data';\n",
+              "        await google.colab.output.renderOutput(dataTable, element);\n",
+              "        const docLink = document.createElement('div');\n",
+              "        docLink.innerHTML = docLinkHtml;\n",
+              "        element.appendChild(docLink);\n",
+              "      }\n",
+              "    </script>\n",
+              "  </div>\n",
+              "\n",
+              "\n",
+              "    </div>\n",
+              "  </div>\n"
+            ],
+            "application/vnd.google.colaboratory.intrinsic+json": {
+              "type": "dataframe",
+              "summary": "{\n  \"name\": \"df[['income', 'data_mb_used', 'average_call_duration']]\",\n  \"rows\": 8,\n  \"fields\": [\n    {\n      \"column\": \"income\",\n      \"properties\": {\n        \"dtype\": \"number\",\n        \"std\": 141413.76062852415,\n        \"min\": 14986.0,\n        \"max\": 427991.7425,\n        \"num_unique_values\": 8,\n        \"samples\": [\n          241988.48500266916,\n          241653.0,\n          14986.0\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    },\n    {\n      \"column\": \"data_mb_used\",\n      \"properties\": {\n        \"dtype\": \"number\",\n        \"std\": 4560.963402789209,\n        \"min\": 471.0,\n        \"max\": 14986.0,\n        \"num_unique_values\": 8,\n        \"samples\": [\n          4201.270210529828,\n          4221.0,\n          14986.0\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    },\n    {\n      \"column\": \"average_call_duration\",\n      \"properties\": {\n        \"dtype\": \"number\",\n        \"std\": 5295.12618931121,\n        \"min\": 1.0,\n        \"max\": 14986.0,\n        \"num_unique_values\": 8,\n        \"samples\": [\n          9.731149072467636,\n          10.0,\n          14986.0\n        ],\n        \"semantic_type\": \"\",\n        \"description\": \"\"\n      }\n    }\n  ]\n}"
+            }
+          },
+          "metadata": {},
+          "execution_count": 25
+        }
+      ],
+      "source": [
+        "# Calculate 1st and 99th percentiles for income\n",
+        "income_min, income_max = df['income'].quantile([0.01, 0.99])\n",
+        "\n",
+        "# Use .loc to avoid SettingWithCopyWarning and ensure assignment modifies the original DataFrame\n",
+        "df.loc[:, 'income'] = df['income'].clip(lower=income_min, upper=income_max)\n",
+        "\n",
+        "# Clip 'data_mb_used' to within 1st and 99th percentiles\n",
+        "usage_min, usage_max = df['data_mb_used'].quantile([0.01, 0.99])\n",
+        "df.loc[:, 'data_mb_used'] = df['data_mb_used'].clip(lower=usage_min, upper=usage_max)\n",
+        "\n",
+        "# Clip 'average_call_duration' to reduce the effect of extreme outliers\n",
+        "call_min, call_max = df['average_call_duration'].quantile([0.01, 0.99])\n",
+        "df.loc[:, 'average_call_duration'] = df['average_call_duration'].clip(lower=call_min, upper=call_max)\n",
+        "\n",
+        "df[['income', 'data_mb_used', 'average_call_duration']].describe()"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "Kl2KH2laUPhJ"
+      },
+      "source": [
+        "### 🔧 Try It Yourself – Part 6\n",
+        "\n",
+        "1. Use `.quantile([0.01, 0.99])` to find the range for:\n",
+        "  - `text_message_count`\n",
+        "  - `over_15mins_calls_per_month`\n",
+        "2. Apply `.clip(lower=..., upper=...)` to reduce the impact of those outliers\n",
+        "\n",
+        "### In Your Response:\n",
+        "1. Compare the `.describe()` output before and after clipping and comment on what you observe\n"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "zddKz_siUTXm",
+        "outputId": "912ca202-ff43-4770-b4d1-b536cb302404",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        }
+      },
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Before clipping:\n",
+            "\n",
+            "       text_message_count  over_15mins_calls_per_month\n",
+            "count        14986.000000                 14986.000000\n",
+            "mean           135.626985                    10.569331\n",
+            "std             48.835016                     8.401171\n",
+            "min             52.000000                     0.000000\n",
+            "25%             93.000000                     3.000000\n",
+            "50%            135.000000                     9.000000\n",
+            "75%            178.000000                    17.000000\n",
+            "max            220.000000                    35.000000\n",
+            "\n",
+            "After clipping:\n",
+            "\n",
+            "       text_message_count  over_15mins_calls_per_month\n",
+            "count        14986.000000                 14986.000000\n",
+            "mean           135.626318                    10.558254\n",
+            "std             48.811500                     8.370427\n",
+            "min             53.000000                     0.000000\n",
+            "25%             93.000000                     3.000000\n",
+            "50%            135.000000                     9.000000\n",
+            "75%            178.000000                    17.000000\n",
+            "max            219.000000                    33.000000\n"
+          ]
+        }
+      ],
+      "source": [
+        "# View summary before clipping\n",
+        "print(\"Before clipping:\\n\")\n",
+        "print(df[['text_message_count', 'over_15mins_calls_per_month']].describe())\n",
+        "\n",
+        "# Get 1st and 99th percentiles\n",
+        "text_min, text_max = df['text_message_count'].quantile([0.01, 0.99])\n",
+        "call_min, call_max = df['over_15mins_calls_per_month'].quantile([0.01, 0.99])\n",
+        "\n",
+        "# Clip values\n",
+        "df.loc[:, 'text_message_count'] = df['text_message_count'].clip(lower=text_min, upper=text_max)\n",
+        "df.loc[:, 'over_15mins_calls_per_month'] = df['over_15mins_calls_per_month'].clip(lower=call_min, upper=call_max)\n",
+        "\n",
+        "# View summary after clipping\n",
+        "print(\"\\nAfter clipping:\\n\")\n",
+        "print(df[['text_message_count', 'over_15mins_calls_per_month']].describe())\n"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "rwiYJnFnrNLq"
+      },
+      "source": [
+        "### ✍️ Your Response: 🔧\n",
+        "1. After clipping, the min and max values changed a little and the standard deviation went down slightly. The rest of the stats stayed pretty similar. So it didn't change the dataset in a big way, it just trimmed the extreme values so they don't affect things as much."
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "source": [],
+      "metadata": {
+        "id": "2x2NZQCB8zw5"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "FpSGvaBmT_9Y"
+      },
+      "source": [
+        "## 🔧 Part 7: Reflection (100 words or less per question)\n",
+        "\n",
+        "1. Which step fixed the most issues in the dataset?\n",
+        "2. What surprised you about the structure or values?\n",
+        "3. Do you feel this data is now ready for transformation in Lab 7?\n"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "srnE_g7zULEm"
+      },
+      "source": [
+        "### ✍️ Your Response: 🔧\n",
+        "1. Handling the missing values probably fixed the most issues. There were a lot of blanks in different columns, and once those were filled or dropped, the dataset looked a lot cleaner. It felt like that step made everything more stable and easier to work with.\n",
+        "2. I was surprised that there were duplicate rows in the copied dataset. I also didn't expect some of the extreme values, especially in things like income and usage. It just shows how messy real data can be.\n",
+        "3. Yeah, I think it's ready now. The column types make sense, missing values are handled, and outliers were capped. It feels a lot more organized and consistent than it did at the start."
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "4JATXzXR2TxA"
+      },
+      "source": [
+        "## Export Your Notebook to Submit in Canvas\n",
+        "- Use the instructions from Lab 1"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": 1,
+      "metadata": {
+        "id": "1UTu4zuH2TxA",
+        "outputId": "d0e570b1-7334-4c9a-f46f-a530819a307e",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        }
+      },
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "[NbConvertApp] WARNING | pattern 'lab_06_LastnameFirstname.ipynb' matched no files\n",
+            "This application is used to convert notebook files (*.ipynb)\n",
+            "        to various other formats.\n",
+            "\n",
+            "        WARNING: THE COMMANDLINE INTERFACE MAY CHANGE IN FUTURE RELEASES.\n",
+            "\n",
+            "Options\n",
+            "=======\n",
+            "The options below are convenience aliases to configurable class-options,\n",
+            "as listed in the \"Equivalent to\" description-line of the aliases.\n",
+            "To see all configurable class-options for some <cmd>, use:\n",
+            "    <cmd> --help-all\n",
+            "\n",
+            "--debug\n",
+            "    set log level to logging.DEBUG (maximize logging output)\n",
+            "    Equivalent to: [--Application.log_level=10]\n",
+            "--show-config\n",
+            "    Show the application's configuration (human-readable format)\n",
+            "    Equivalent to: [--Application.show_config=True]\n",
+            "--show-config-json\n",
+            "    Show the application's configuration (json format)\n",
+            "    Equivalent to: [--Application.show_config_json=True]\n",
+            "--generate-config\n",
+            "    generate default config file\n",
+            "    Equivalent to: [--JupyterApp.generate_config=True]\n",
+            "-y\n",
+            "    Answer yes to any questions instead of prompting.\n",
+            "    Equivalent to: [--JupyterApp.answer_yes=True]\n",
+            "--execute\n",
+            "    Execute the notebook prior to export.\n",
+            "    Equivalent to: [--ExecutePreprocessor.enabled=True]\n",
+            "--allow-errors\n",
+            "    Continue notebook execution even if one of the cells throws an error and include the error message in the cell output (the default behaviour is to abort conversion). This flag is only relevant if '--execute' was specified, too.\n",
+            "    Equivalent to: [--ExecutePreprocessor.allow_errors=True]\n",
+            "--stdin\n",
+            "    read a single notebook file from stdin. Write the resulting notebook with default basename 'notebook.*'\n",
+            "    Equivalent to: [--NbConvertApp.from_stdin=True]\n",
+            "--stdout\n",
+            "    Write notebook output to stdout instead of files.\n",
+            "    Equivalent to: [--NbConvertApp.writer_class=StdoutWriter]\n",
+            "--inplace\n",
+            "    Run nbconvert in place, overwriting the existing notebook (only\n",
+            "            relevant when converting to notebook format)\n",
+            "    Equivalent to: [--NbConvertApp.use_output_suffix=False --NbConvertApp.export_format=notebook --FilesWriter.build_directory=]\n",
+            "--clear-output\n",
+            "    Clear output of current file and save in place,\n",
+            "            overwriting the existing notebook.\n",
+            "    Equivalent to: [--NbConvertApp.use_output_suffix=False --NbConvertApp.export_format=notebook --FilesWriter.build_directory= --ClearOutputPreprocessor.enabled=True]\n",
+            "--coalesce-streams\n",
+            "    Coalesce consecutive stdout and stderr outputs into one stream (within each cell).\n",
+            "    Equivalent to: [--NbConvertApp.use_output_suffix=False --NbConvertApp.export_format=notebook --FilesWriter.build_directory= --CoalesceStreamsPreprocessor.enabled=True]\n",
+            "--no-prompt\n",
+            "    Exclude input and output prompts from converted document.\n",
+            "    Equivalent to: [--TemplateExporter.exclude_input_prompt=True --TemplateExporter.exclude_output_prompt=True]\n",
+            "--no-input\n",
+            "    Exclude input cells and output prompts from converted document.\n",
+            "            This mode is ideal for generating code-free reports.\n",
+            "    Equivalent to: [--TemplateExporter.exclude_output_prompt=True --TemplateExporter.exclude_input=True --TemplateExporter.exclude_input_prompt=True]\n",
+            "--allow-chromium-download\n",
+            "    Whether to allow downloading chromium if no suitable version is found on the system.\n",
+            "    Equivalent to: [--WebPDFExporter.allow_chromium_download=True]\n",
+            "--disable-chromium-sandbox\n",
+            "    Disable chromium security sandbox when converting to PDF..\n",
+            "    Equivalent to: [--WebPDFExporter.disable_sandbox=True]\n",
+            "--show-input\n",
+            "    Shows code input. This flag is only useful for dejavu users.\n",
+            "    Equivalent to: [--TemplateExporter.exclude_input=False]\n",
+            "--embed-images\n",
+            "    Embed the images as base64 dataurls in the output. This flag is only useful for the HTML/WebPDF/Slides exports.\n",
+            "    Equivalent to: [--HTMLExporter.embed_images=True]\n",
+            "--sanitize-html\n",
+            "    Whether the HTML in Markdown cells and cell outputs should be sanitized..\n",
+            "    Equivalent to: [--HTMLExporter.sanitize_html=True]\n",
+            "--log-level=<Enum>\n",
+            "    Set the log level by value or name.\n",
+            "    Choices: any of [0, 10, 20, 30, 40, 50, 'DEBUG', 'INFO', 'WARN', 'ERROR', 'CRITICAL']\n",
+            "    Default: 30\n",
+            "    Equivalent to: [--Application.log_level]\n",
+            "--config=<Unicode>\n",
+            "    Full path of a config file.\n",
+            "    Default: ''\n",
+            "    Equivalent to: [--JupyterApp.config_file]\n",
+            "--to=<Unicode>\n",
+            "    The export format to be used, either one of the built-in formats\n",
+            "            ['asciidoc', 'custom', 'html', 'latex', 'markdown', 'notebook', 'pdf', 'python', 'qtpdf', 'qtpng', 'rst', 'script', 'slides', 'webpdf']\n",
+            "            or a dotted object name that represents the import path for an\n",
+            "            ``Exporter`` class\n",
+            "    Default: ''\n",
+            "    Equivalent to: [--NbConvertApp.export_format]\n",
+            "--template=<Unicode>\n",
+            "    Name of the template to use\n",
+            "    Default: ''\n",
+            "    Equivalent to: [--TemplateExporter.template_name]\n",
+            "--template-file=<Unicode>\n",
+            "    Name of the template file to use\n",
+            "    Default: None\n",
+            "    Equivalent to: [--TemplateExporter.template_file]\n",
+            "--theme=<Unicode>\n",
+            "    Template specific theme(e.g. the name of a JupyterLab CSS theme distributed\n",
+            "    as prebuilt extension for the lab template)\n",
+            "    Default: 'light'\n",
+            "    Equivalent to: [--HTMLExporter.theme]\n",
+            "--sanitize_html=<Bool>\n",
+            "    Whether the HTML in Markdown cells and cell outputs should be sanitized.This\n",
+            "    should be set to True by nbviewer or similar tools.\n",
+            "    Default: False\n",
+            "    Equivalent to: [--HTMLExporter.sanitize_html]\n",
+            "--writer=<DottedObjectName>\n",
+            "    Writer class used to write the\n",
+            "                                        results of the conversion\n",
+            "    Default: 'FilesWriter'\n",
+            "    Equivalent to: [--NbConvertApp.writer_class]\n",
+            "--post=<DottedOrNone>\n",
+            "    PostProcessor class used to write the\n",
+            "                                        results of the conversion\n",
+            "    Default: ''\n",
+            "    Equivalent to: [--NbConvertApp.postprocessor_class]\n",
+            "--output=<Unicode>\n",
+            "    Overwrite base name use for output files.\n",
+            "                Supports pattern replacements '{notebook_name}'.\n",
+            "    Default: '{notebook_name}'\n",
+            "    Equivalent to: [--NbConvertApp.output_base]\n",
+            "--output-dir=<Unicode>\n",
+            "    Directory to write output(s) to. Defaults\n",
+            "                                  to output to the directory of each notebook. To recover\n",
+            "                                  previous default behaviour (outputting to the current\n",
+            "                                  working directory) use . as the flag value.\n",
+            "    Default: ''\n",
+            "    Equivalent to: [--FilesWriter.build_directory]\n",
+            "--reveal-prefix=<Unicode>\n",
+            "    The URL prefix for reveal.js (version 3.x).\n",
+            "            This defaults to the reveal CDN, but can be any url pointing to a copy\n",
+            "            of reveal.js.\n",
+            "            For speaker notes to work, this must be a relative path to a local\n",
+            "            copy of reveal.js: e.g., \"reveal.js\".\n",
+            "            If a relative path is given, it must be a subdirectory of the\n",
+            "            current directory (from which the server is run).\n",
+            "            See the usage documentation\n",
+            "            (https://nbconvert.readthedocs.io/en/latest/usage.html#reveal-js-html-slideshow)\n",
+            "            for more details.\n",
+            "    Default: ''\n",
+            "    Equivalent to: [--SlidesExporter.reveal_url_prefix]\n",
+            "--nbformat=<Enum>\n",
+            "    The nbformat version to write.\n",
+            "            Use this to downgrade notebooks.\n",
+            "    Choices: any of [1, 2, 3, 4]\n",
+            "    Default: 4\n",
+            "    Equivalent to: [--NotebookExporter.nbformat_version]\n",
+            "\n",
+            "Examples\n",
+            "--------\n",
+            "\n",
+            "    The simplest way to use nbconvert is\n",
+            "\n",
+            "            > jupyter nbconvert mynotebook.ipynb --to html\n",
+            "\n",
+            "            Options include ['asciidoc', 'custom', 'html', 'latex', 'markdown', 'notebook', 'pdf', 'python', 'qtpdf', 'qtpng', 'rst', 'script', 'slides', 'webpdf'].\n",
+            "\n",
+            "            > jupyter nbconvert --to latex mynotebook.ipynb\n",
+            "\n",
+            "            Both HTML and LaTeX support multiple output templates. LaTeX includes\n",
+            "            'base', 'article' and 'report'.  HTML includes 'basic', 'lab' and\n",
+            "            'classic'. You can specify the flavor of the format used.\n",
+            "\n",
+            "            > jupyter nbconvert --to html --template lab mynotebook.ipynb\n",
+            "\n",
+            "            You can also pipe the output to stdout, rather than a file\n",
+            "\n",
+            "            > jupyter nbconvert mynotebook.ipynb --stdout\n",
+            "\n",
+            "            PDF is generated via latex\n",
+            "\n",
+            "            > jupyter nbconvert mynotebook.ipynb --to pdf\n",
+            "\n",
+            "            You can get (and serve) a Reveal.js-powered slideshow\n",
+            "\n",
+            "            > jupyter nbconvert myslides.ipynb --to slides --post serve\n",
+            "\n",
+            "            Multiple notebooks can be given at the command line in a couple of\n",
+            "            different ways:\n",
+            "\n",
+            "            > jupyter nbconvert notebook*.ipynb\n",
+            "            > jupyter nbconvert notebook1.ipynb notebook2.ipynb\n",
+            "\n",
+            "            or you can specify the notebooks list in a config file, containing::\n",
+            "\n",
+            "                c.NbConvertApp.notebooks = [\"my_notebook.ipynb\"]\n",
+            "\n",
+            "            > jupyter nbconvert --config mycfg.py\n",
+            "\n",
+            "To see all available configurables, use `--help-all`.\n",
+            "\n"
+          ]
+        }
+      ],
+      "source": [
+        "!jupyter nbconvert --to html \"lab_06_LastnameFirstname.ipynb\""
+      ]
+    }
+  ],
+  "metadata": {
+    "colab": {
+      "provenance": []
+    },
+    "kernelspec": {
+      "display_name": "Python 3",
+      "name": "python3"
+    },
+    "language_info": {
+      "name": "python"
+    }
+  },
+  "nbformat": 4,
+  "nbformat_minor": 0
+}
